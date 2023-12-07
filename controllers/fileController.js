@@ -19,7 +19,7 @@ exports.uploadFile = catchAsync(async (req, res, next) => {
     file.originalname.split(".")[0]
   }-${uuidv4()}-${Date.now()}.${mimetype.split("/")[1]}`;
 
-  fileName.replace(/\s/g, "")
+  fileName = fileName.replace(/\s/g, "")
 
   const key = await upload(file.buffer, fileName, folder, mimetype);
   res.status(200).json({

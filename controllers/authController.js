@@ -1,361 +1,314 @@
-const crypto = require("crypto");
-const util = require("util");
-const jwt = require("jsonwebtoken");
-const ejs = require("ejs");
-const path = require("path");
-const User = require("../models/userModel");
-const Subscription = require("../models/subscriptionModel");
-const catchAsync = require("../utils/catchAsync");
-const AppError = require("../utils/appError");
-const { sendForgotPasswordEmail, sendAccountDeletedEmail } = require("../utils/email");
+const crypto = require('crypto');
+const util = require('util');
+const jwt = require('jsonwebtoken');
+const ejs = require('ejs');
+const path = require('path');
+const User = require('../models/userModel');
+const Subscription = require('../models/subscriptionModel');
+const catchAsync = require('../utils/catchAsync');
+const AppError = require('../utils/appError');
+const { sendForgotPasswordEmail, sendAccountDeletedEmail } = require('../utils/email');
 
 const signToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    // expiresIn: process.env.JWT_EXPIRES_IN,
-  });
+    return jwt.sign({ id }, process.env.JWT_SECRET, {
+        // expiresIn: process.env.JWT_EXPIRES_IN,
+    });
 };
 
 const createSendToken = (user, statusCode, res) => {
-  const token = signToken(user._id);
-  user.password = undefined;
+    const token = signToken(user._id);
+    user.password = undefined;
 
-  res.status(statusCode).json({
-    status: "success",
-    token,
-    data: {
-      user,
-    },
-  });
+    res.status(statusCode).json({
+        status: 'success',
+        token,
+        data: {
+            user,
+        },
+    });
 };
 
 exports.signup = catchAsync(async (req, res, next) => {
-  const {
-    name,
-    email,
-    phone,
-    role,
-    profilePic,
-    passwordConfirm,
-    password,
-    coachCategory,
-  } = req.body;
+    const { name, email, role, profilePic, document, address, coordinates, passwordConfirm, password } = req.body;
 
-  if (!email || !password)
-    return next(new AppError("Please Provide Email and Password", 400));
+    if (!email || !password) return next(new AppError('Please Provide Email and Password', 400));
 
-  const user = await User.findOne({ email: email.toLowerCase() });
-  if (user) return next(new AppError("User already exists", 400));
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (user) return next(new AppError('User already exists', 400));
+    
+    const newUser = await User.create({
+        name,
+        email: email.toLowerCase(),
+        address,
+        location: { type: 'Point', coordinates },
+        role,
+        profilePic,
+        document,
+        password,
+        passwordConfirm,
+    });
 
-  const newUser = await User.create({
-    name: name,
-    email: email.toLowerCase(),
-    phone: phone,
-    role: role,
-    profilePic: profilePic,
-    coachCategory: coachCategory,
-    password: password,
-    passwordConfirm: passwordConfirm,
-  });
-
-  createSendToken(newUser, 201, res);
+    createSendToken(newUser, 201, res);
 });
 
 exports.update = catchAsync(async (req, res, next) => {
-  const { profilePic } = req.body;
-  let user = await User.findByIdAndUpdate(
-    req.user.id,
-    {
-      profilePic,
-    },
-    {
-      new: true,
-      runValidators: true,
-    }
-  );
+    const { profilePic } = req.body;
+    let user = await User.findByIdAndUpdate(
+        req.user.id,
+        {
+            profilePic,
+        },
+        {
+            new: true,
+            runValidators: true,
+        }
+    );
 
-  if (!user)
-    return next(new AppError("No User found with that ID", 404));
+    if (!user) return next(new AppError('No User found with that ID', 404));
 
-  res.status(200).json({
-    status: "success",
-    message: "User updated successfully",
-    data: { user },
-  });
+    res.status(200).json({
+        status: 'success',
+        message: 'User updated successfully',
+        data: { user },
+    });
 });
 
 exports.login = catchAsync(async (req, res, next) => {
-  const { email, password, role, deviceType, deviceToken } = req.body;
+    const { email, password, role, deviceType, deviceToken } = req.body;
 
-  if (!email || !password)
-    return next(new AppError("Please Provide Email and Password", 400));
+    if (!email || !password) return next(new AppError('Please Provide Email and Password', 400));
 
-  let filter = { email: email.toLowerCase() };
+    let filter = { email: email.toLowerCase() };
 
-  if (role) filter.role = role;
+    if (role) filter.role = role;
 
-  let user = await User.findOne(filter).select("+password");
+    let user = await User.findOne(filter).select('+password');
 
-  if (
-    !user ||
-    !user.password ||
-    !(await user.correctPassword(password, user.password))
-  )
-    return next(new AppError("Incorrect Email or Password", 401));
+    if (!user || !user.password || !(await user.correctPassword(password, user.password)))
+        return next(new AppError('Incorrect Email or Password', 401));
 
-  if (!user.isActive)
-    return next(new AppError("Your account is blocked.", 403));
+    if (!user.isActive) return next(new AppError('Your account is blocked.', 403));
 
-  if (deviceToken) {
-    user = await User.findByIdAndUpdate(
-      user.id,
-      { deviceType: deviceType, deviceToken: deviceToken },
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
-  }
+    if (deviceToken) {
+        user = await User.findByIdAndUpdate(
+            user.id,
+            { deviceType: deviceType, deviceToken: deviceToken },
+            {
+                new: true,
+                runValidators: true,
+            }
+        );
+    }
 
-  createSendToken(user, 200, res);
+    createSendToken(user, 200, res);
 });
 
 exports.socialLogin = catchAsync(async (req, res, next) => {
-  console.log("req.body social",req.body);
-  const { name, email, phone, deviceType, deviceToken } = req.body;
+    console.log('req.body social', req.body);
+    const { name, email, phone, deviceType, deviceToken } = req.body;
 
-  if (!email && !phone)
-    return next(new AppError("Please Provide Email or Phone", 400));
+    if (!email && !phone) return next(new AppError('Please Provide Email or Phone', 400));
 
-  let user;
-  if(email) user = await User.findOne({ email: email.toLowerCase() });
-  else if(phone) user = await User.findOne({ phone: phone });
+    let user;
+    if (email) user = await User.findOne({ email: email.toLowerCase() });
+    else if (phone) user = await User.findOne({ phone: phone });
 
-  if (!user) {
-    user = await User.create({
-      name: req.body.name,
-      email: req.body.email,
-      phone: req.body.phone,
-      role: req.body.role,
-      coachCategory: req.body.coachCategory,
-    });
-  }
+    if (!user) {
+        user = await User.create({
+            name: req.body.name,
+            email: req.body.email,
+            phone: req.body.phone,
+            role: req.body.role,
+            coachCategory: req.body.coachCategory,
+        });
+    }
 
-  if (!user.isActive)
-    return next(new AppError("Your account is blocked.", 403));
+    if (!user.isActive) return next(new AppError('Your account is blocked.', 403));
 
-  if (deviceToken) {
-    user = await User.findByIdAndUpdate(
-      user.id,
-      { deviceType: deviceType, deviceToken: deviceToken },
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
-  }
+    if (deviceToken) {
+        user = await User.findByIdAndUpdate(
+            user.id,
+            { deviceType: deviceType, deviceToken: deviceToken },
+            {
+                new: true,
+                runValidators: true,
+            }
+        );
+    }
 
-  createSendToken(user, 200, res);
+    createSendToken(user, 200, res);
 });
 
 exports.protect = catchAsync(async (req, res, next) => {
-  let token;
+    let token;
 
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer")
-  ) {
-    token = req.headers.authorization.split(" ")[1];
-  }
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+        token = req.headers.authorization.split(' ')[1];
+    }
 
-  if (!token)
-    return next(
-      new AppError("You are not logged in! Please login to get access!", 401)
-    );
+    if (!token) return next(new AppError('You are not logged in! Please login to get access!', 401));
 
-  const decoded = await util.promisify(jwt.verify)(
-    token,
-    process.env.JWT_SECRET
-  );
+    const decoded = await util.promisify(jwt.verify)(token, process.env.JWT_SECRET);
 
-  const currentUser = await User.findById(decoded.id);
-  if (!currentUser)
-    return next(
-      new AppError("The User belonging to this token does not exist", 401)
-    );
+    const currentUser = await User.findById(decoded.id);
+    if (!currentUser) return next(new AppError('The User belonging to this token does not exist', 401));
 
-  if (currentUser.changedPasswordAfter(decoded.iat)) {
-    return next(
-      new AppError("User recently changed password! Please login again.", 401)
-    );
-  }
+    if (currentUser.changedPasswordAfter(decoded.iat)) {
+        return next(new AppError('User recently changed password! Please login again.', 401));
+    }
 
-  req.user = currentUser;
-  next();
+    req.user = currentUser;
+    next();
 });
 
 exports.forgotPassword = catchAsync(async (req, res, next) => {
-  const email = req.body.email;
-  if (!email) return next(new AppError("Please Enter your Email.", 400));
+    const email = req.body.email;
+    if (!email) return next(new AppError('Please Enter your Email.', 400));
 
-  const user = await User.findOne({ email });
-  if (!user)
-    return next(new AppError("There is no user with email address.", 404));
+    const user = await User.findOne({ email });
+    if (!user) return next(new AppError('There is no user with email address.', 404));
 
-  const resetToken = user.createPasswordResetToken();
-  await user.save({ validateBeforeSave: false });
+    const resetToken = user.createPasswordResetToken();
+    await user.save({ validateBeforeSave: false });
 
-  const resetUrl = `${process.env.WEB_BASE_URL}/reset-password/${resetToken}`;
+    const resetUrl = `${process.env.WEB_BASE_URL}/reset-password/${resetToken}`;
 
-  await sendForgotPasswordEmail(user, resetUrl);
+    await sendForgotPasswordEmail(user, resetUrl);
 
-  res.status(200).json({
-    status: "success",
-    message: "Password reset mail sent successfully.",
-  });
+    res.status(200).json({
+        status: 'success',
+        message: 'Password reset mail sent successfully.',
+    });
 });
 
 exports.resetPassword = catchAsync(async (req, res, next) => {
-  const hasedToken = crypto
-    .createHash("sha256")
-    .update(req.params.token)
-    .digest("hex");
+    const hasedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
 
-  const user = await User.findOne({
-    passwordResetToken: hasedToken,
-    passwordResetExpires: { $gt: Date.now() },
-  });
+    const user = await User.findOne({
+        passwordResetToken: hasedToken,
+        passwordResetExpires: { $gt: Date.now() },
+    });
 
-  if (!user) return next(new AppError("Token is invalid or expired.", 400));
+    if (!user) return next(new AppError('Token is invalid or expired.', 400));
 
-  user.password = req.body.password;
-  user.passwordConfirm = req.body.passwordConfirm;
-  user.passwordResetToken = undefined;
-  user.passwordResetExpires = undefined;
+    user.password = req.body.password;
+    user.passwordConfirm = req.body.passwordConfirm;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
 
-  await user.save();
+    await user.save();
 
-  createSendToken(user, 200, res);
+    createSendToken(user, 200, res);
 });
 
 exports.changePassword = catchAsync(async (req, res, next) => {
-  const { oldPassword, password, passwordConfirm } = req.body;
+    const { oldPassword, password, passwordConfirm } = req.body;
 
-  if (!oldPassword || !password || !passwordConfirm)
-    return next(
-      new AppError(
-        "Please Provide Old Password, Password and Confirm Password",
-        400
-      )
-    );
+    if (!oldPassword || !password || !passwordConfirm)
+        return next(new AppError('Please Provide Old Password, Password and Confirm Password', 400));
 
-  let user = await User.findOne({ _id: req.user.id }).select("+password");
-  if (!user) return next(new AppError("No User found with that ID", 404));
+    let user = await User.findOne({ _id: req.user.id }).select('+password');
+    if (!user) return next(new AppError('No User found with that ID', 404));
 
-  if (
-    !user ||
-    !user.password ||
-    !(await user.correctPassword(oldPassword, user.password))
-  )
-    return next(new AppError("Incorrect Old Password", 401));
+    if (!user || !user.password || !(await user.correctPassword(oldPassword, user.password)))
+        return next(new AppError('Incorrect Old Password', 401));
 
-  user.password = req.body.password;
-  user.passwordConfirm = req.body.passwordConfirm;
+    user.password = req.body.password;
+    user.passwordConfirm = req.body.passwordConfirm;
 
-  await user.save();
+    await user.save();
 
-  createSendToken(user, 200, res);
+    createSendToken(user, 200, res);
 });
 
 exports.profile = catchAsync(async (req, res, next) => {
-  const user = await User.findById(req.user.id).lean();
+    const user = await User.findById(req.user.id).lean();
 
-  if (!user) return next(new AppError("No User found with that ID", 404));
+    if (!user) return next(new AppError('No User found with that ID', 404));
 
-  const subscription = await Subscription.findOne({ userId: req.user.id })
-    .select("userId validTill")
-    .populate("subscriptionPlanId", "name icon")
-    .lean();
+    const subscription = await Subscription.findOne({ userId: req.user.id })
+        .select('userId validTill')
+        .populate('subscriptionPlanId', 'name icon')
+        .lean();
 
-  if (subscription) {
-    user.subscription = subscription;
-  }
+    if (subscription) {
+        user.subscription = subscription;
+    }
 
-  res.status(200).json({
-    status: "success",
-    data: {
-      user,
-    },
-  });
+    res.status(200).json({
+        status: 'success',
+        data: {
+            user,
+        },
+    });
 });
 
 exports.updateUDID = catchAsync(async (req, res, next) => {
-  const user = await User.findByIdAndUpdate(
-    req.user.id,
-    { UDID: req.body.UDID },
-    {
-      new: true,
-      runValidators: true,
-    }
-  );
+    const user = await User.findByIdAndUpdate(
+        req.user.id,
+        { UDID: req.body.UDID },
+        {
+            new: true,
+            runValidators: true,
+        }
+    );
 
-  if (!user) return next(new AppError("No User found with that ID", 404));
+    if (!user) return next(new AppError('No User found with that ID', 404));
 
-  res.status(200).json({
-    status: "success",
-    message: "UDID updated successfully.",
-  });
+    res.status(200).json({
+        status: 'success',
+        message: 'UDID updated successfully.',
+    });
 });
 
 exports.deleteDeviceToken = catchAsync(async (req, res, next) => {
-  const user = await User.findByIdAndUpdate(
-    req.user.id,
-    { deviceType: "", deviceToken: "" },
-    {
-      new: true,
-      runValidators: true,
-    }
-  );
+    const user = await User.findByIdAndUpdate(
+        req.user.id,
+        { deviceType: '', deviceToken: '' },
+        {
+            new: true,
+            runValidators: true,
+        }
+    );
 
-  if (!user) return next(new AppError("No User found with that ID", 404));
+    if (!user) return next(new AppError('No User found with that ID', 404));
 
-  res.status(200).json({
-    status: "success",
-    message: "Device Token deleted successfully.",
-  });
+    res.status(200).json({
+        status: 'success',
+        message: 'Device Token deleted successfully.',
+    });
 });
 
 exports.deleteAccount = catchAsync(async (req, res, next) => {
-  const user = await User.findById(req.user.id).lean();
+    const user = await User.findById(req.user.id).lean();
 
-  if (!user) return next(new AppError("No User found with that ID", 404));
+    if (!user) return next(new AppError('No User found with that ID', 404));
 
-  // await User.findOneAndDelete({ _id: req.user.id });
-  await User.findByIdAndUpdate(
-    req.user.id,
-    {
-      isDeleted: true
-    },
-    {
-      new: true,
-      runValidators: true,
-    }
-  );
+    // await User.findOneAndDelete({ _id: req.user.id });
+    await User.findByIdAndUpdate(
+        req.user.id,
+        {
+            isDeleted: true,
+        },
+        {
+            new: true,
+            runValidators: true,
+        }
+    );
 
-  await sendAccountDeletedEmail(user);
+    await sendAccountDeletedEmail(user);
 
-  res.status(200).json({
-    status: "success",
-    message: "Account deleted successfully",
-  });
+    res.status(200).json({
+        status: 'success',
+        message: 'Account deleted successfully',
+    });
 });
 
 exports.restrictTo = (...roles) => {
-  return (req, res, next) => {
-    if (!roles.includes(req.user.role))
-      return next(
-        new AppError("You do not have permission to perform this action!", 403)
-      );
+    return (req, res, next) => {
+        if (!roles.includes(req.user.role))
+            return next(new AppError('You do not have permission to perform this action!', 403));
 
-    next();
-  };
+        next();
+    };
 };
