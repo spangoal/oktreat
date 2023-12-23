@@ -29,7 +29,7 @@ const createSendToken = (user, statusCode, res) => {
 };
 
 exports.signup = catchAsync(async (req, res, next) => {
-    const { name, email, role, profilePic, document, address, coordinates, passwordConfirm, password } = req.body;
+    const { name, email, phone, role, profilePic, document, address, coordinates, passwordConfirm, password } = req.body;
 
     if (!email || !password) return next(new AppError('Please Provide Email and Password', 400));
 
@@ -39,6 +39,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     const newUser = await User.create({
         name,
         email: email.toLowerCase(),
+        phone,
         address,
         location: { type: 'Point', coordinates },
         role,
