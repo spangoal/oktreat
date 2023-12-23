@@ -16,6 +16,7 @@ const userSchema = mongoose.Schema(
             lowerCase: true,
             validate: [validator.isEmail, 'Please enter a valid email.'],
         },
+        phone: String,
         profilePic: {
             type: String,
             default: 'profile/default.png',
