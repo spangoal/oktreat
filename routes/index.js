@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const userRouter = require('./userRoutes');
+const serviceProviderRoutes = require('./serviceProviderRoutes');
 const coachRoutes = require('./coachRoutes');
 const fileRoutes = require('./fileRoutes');
 const subscriptionPlanRoutes = require('./subscriptionPlanRoutes');
@@ -22,6 +23,7 @@ router.get('/', function (req, res, next) {
 });
 
 router.use('/api/v1/users', userRouter);
+router.use('/api/v1/service/providers', serviceProviderRoutes);
 router.use('/api/v1/coaches', coachRoutes);
 router.use('/api/v1/file', fileRoutes);
 router.use('/api/v1/subscriptionPlans', subscriptionPlanRoutes);
