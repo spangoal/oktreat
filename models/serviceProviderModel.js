@@ -33,7 +33,7 @@ const serviceProviderSchema = mongoose.Schema(
         },
         role: {
             type: String,
-            default: 'user',
+            default: 'service_provider',
             enum: ['service_provider'],
         },
         address: { type: String, trim: true, lowercase: true },

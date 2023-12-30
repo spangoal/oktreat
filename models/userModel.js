@@ -17,6 +17,8 @@ const userSchema = mongoose.Schema(
             validate: [validator.isEmail, 'Please enter a valid email.'],
         },
         phone: String,
+        about: String,
+        skills: String,
         profilePic: {
             type: String,
             default: 'profile/default.png',
@@ -34,7 +36,7 @@ const userSchema = mongoose.Schema(
         role: {
             type: String,
             default: 'user',
-            enum: ['service_provider'],
+            enum: ['user'],
         },
         address: { type: String, trim: true, lowercase: true },
         location: {

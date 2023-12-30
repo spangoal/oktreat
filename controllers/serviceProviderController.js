@@ -58,7 +58,7 @@ exports.update = catchAsync(async (req, res, next) => {
     let user = await ServiceProvider.findByIdAndUpdate(
         req.user.id,
         {
-            profilePic,
+            ...req.body,
         },
         {
             new: true,
