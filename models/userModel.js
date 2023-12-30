@@ -47,6 +47,10 @@ const userSchema = mongoose.Schema(
             },
             coordinates: [Number],
         },
+        services: {
+            type: String,
+            enum: ['dog', 'cat'],
+        },
         deviceType: { type: String, select: false },
         deviceToken: { type: String, select: false },
         password: {

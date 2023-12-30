@@ -54,11 +54,16 @@ exports.signup = catchAsync(async (req, res, next) => {
 });
 
 exports.update = catchAsync(async (req, res, next) => {
-    const { profilePic } = req.body;
+    const { coordinates } = req.body;
+    const updateData = { ...req.body };
+    if(coordinates) {
+        updateData.location = { type: 'Point', coordinates };
+    }
+
     let user = await ServiceProvider.findByIdAndUpdate(
         req.user.id,
         {
-            ...req.body,
+            ...updateData,
         },
         {
             new: true,
