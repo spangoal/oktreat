@@ -323,7 +323,7 @@ exports.getAllUser = catchAsync(async (req, res, next) => {
 
     let query = ServiceProvider.find(filter)
         .sort('-createdAt')
-        .select('name email phone profilePic coachCategory coachRating');
+        .select('name rating address profilePic');
 
     let page = req.query.page ? parseInt(req.query.page) : 0;
     let limit = req.query.limit ? parseInt(req.query.limit) : 0;
@@ -346,7 +346,7 @@ exports.getAllUser = catchAsync(async (req, res, next) => {
 });
 
 exports.getUser = catchAsync(async (req, res, next) => {
-    const user = await ServiceProvider.findById(req.params.id).select('+coachRating');
+    const user = await ServiceProvider.findById(req.params.id);
 
     if (!user) return next(new AppError('No user found with that ID', 404));
 

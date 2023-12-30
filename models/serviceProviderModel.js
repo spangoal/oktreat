@@ -45,6 +45,7 @@ const serviceProviderSchema = mongoose.Schema(
             },
             coordinates: [Number],
         },
+        rating: { type: Number, default: 0 },
         deviceType: { type: String, select: false },
         deviceToken: { type: String, select: false },
         password: {
