@@ -29,7 +29,7 @@ router.delete(
   serviceProviderController.deleteAccount
 );
 
-router.route("/").get(serviceProviderController.protect, serviceProviderController.getAllUser);
-router.route("/:id").get(serviceProviderController.protect, serviceProviderController.getUser);
+router.route("/").get( serviceProviderController.getAllUser);
+router.route("/:id").get( serviceProviderController.getUser);
 
 module.exports = router;

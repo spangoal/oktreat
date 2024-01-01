@@ -312,7 +312,7 @@ exports.deleteAccount = catchAsync(async (req, res, next) => {
 });
 
 exports.getAllUser = catchAsync(async (req, res, next) => {
-    const filter = { role: 'user', isDeleted: { $ne: true } };
+    const filter = { isDeleted: { $ne: true } };
 
     if (req.query.search) {
         filter.name = {
